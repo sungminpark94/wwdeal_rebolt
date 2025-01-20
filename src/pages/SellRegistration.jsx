@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import Header from "../components/Header";
 import Container from "../components/Container";
-import { useReservation } from '../contexts/ReservationContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { 
+  getAuth, 
+  RecaptchaVerifier, 
+  signInWithPhoneNumber 
+} from 'firebase/auth';
 
 const SellRegistration = () => {
-  const { addReservation } = useReservation();
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
@@ -64,6 +69,15 @@ const SellRegistration = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [originalPhone, setOriginalPhone] = useState('');
 
+  const auth = getAuth();
+
+  // reCAPTCHA 설정
+  useEffect(() => {
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      'size': 'invisible'
+    });
+  }, [auth]);
+
   // 사용자 번호 자동 입력
   useEffect(() => {
     if (user?.phoneNumber) {
@@ -96,33 +110,80 @@ const SellRegistration = () => {
   // 번호가 변경되었는지 확인
   const isPhoneChanged = phone !== originalPhone;
 
-  const handleSubmit = () => {
-    if (!selectedDate || !selectedTime || !address || !phone || !carName || !carYear) {
+  // 인증번호 발송
+  const handleSendVerification = async () => {
+    try {
+      const phoneNumber = '+82' + phone.replace(/-/g, '').slice(1);
+      const appVerifier = window.recaptchaVerifier;
+      
+      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+      window.confirmationResult = confirmationResult;
+      
+      setIsVerificationSent(true);
+      setTimeLeft(180);
+    } catch (error) {
+      console.error('Error sending verification:', error);
+      alert('인증번호 전송에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
+
+  // 인증번호 확인
+  const handleVerifyCode = async () => {
+    if (verificationCode.length !== 6) {
+      alert('인증번호 6자리를 입력해주세요.');
+      return;
+    }
+
+    try {
+      const result = await window.confirmationResult.confirm(verificationCode);
+      if (result.user) {
+        setIsVerified(true);
+        setIsVerificationSent(false);
+      }
+    } catch (error) {
+      console.error('Error verifying code:', error);
+      alert('잘못된 인증번호입니다. 다시 시도해주세요.');
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!user) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    if (!carName || !carYear || !selectedDate || !selectedTime || !address || !phone || !isVerified) {
       alert('모든 정보를 입력해주세요.');
       return;
     }
 
-    // 예약 정보 저장
-    addReservation({
-      date: selectedDate,
-      time: selectedTime,
-      address,
-      phone,
-      carName,
-      carYear
-    });
+    try {
+      // Firestore에 예약 정보 저장
+      const reservationData = {
+        userId: user.uid,
+        carName,
+        carYear,
+        visitDate: selectedDate,
+        visitTime: selectedTime,
+        address,
+        phone,
+        status: '예약 완료',  // 예약 상태
+        createdAt: new Date(),
+      };
 
-    // 성공 모달 표시
-    setShowSuccessModal(true);
+      await addDoc(collection(db, 'reservations'), reservationData);
 
-    // 3초 후 홈으로 이동
-    setTimeout(() => {
-      navigate('/');
-    }, 3000);
+      alert('예약이 완료되었습니다.');
+      navigate('/profile');  // 예약 완료 후 프로필 페이지로 이동
+    } catch (error) {
+      console.error('예약 저장 중 오류:', error);
+      alert('예약 중 오류가 발생했습니다.');
+    }
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
+      <div id="recaptcha-container"></div>
       <div className="mx-auto w-full max-w-[480px] relative flex flex-col flex-1">
         <Header 
           title="방문 일정 예약" 
@@ -260,11 +321,7 @@ const SellRegistration = () => {
                 />
                 {isPhoneChanged && !isVerified && (
                   <button
-                    onClick={() => {
-                      setIsVerificationSent(true);
-                      setTimeLeft(180);
-                      // Firebase 연동 시 실제 인증번호 요청 로직 추가
-                    }}
+                    onClick={handleSendVerification}
                     disabled={isVerificationSent && timeLeft > 0}
                     className={`absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg text-sm font-medium
                       ${isVerificationSent && timeLeft > 0 
@@ -287,13 +344,7 @@ const SellRegistration = () => {
                     maxLength={6}
                   />
                   <button
-                    onClick={() => {
-                      if (verificationCode.length === 6) {
-                        setIsVerified(true);
-                        setIsVerificationSent(false);
-                        // Firebase 연동 시 실제 인증번호 확인 로직 추가
-                      }
-                    }}
+                    onClick={handleVerifyCode}
                     className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800"
                   >
                     확인

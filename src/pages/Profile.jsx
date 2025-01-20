@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { useAuth } from '../contexts/AuthContext';
 import { useReservation } from '../contexts/ReservationContext';
 import { faqData } from '../data/faqData';
 import { useInterest } from '../contexts/InterestContext';
+import LoginModal from '../components/LoginModal';
+import { collection, query, where, getDocs, orderBy, deleteDoc, doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 const Profile = () => {
   const { user, logout, openLoginModal } = useAuth();
@@ -23,6 +26,64 @@ const Profile = () => {
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [notificationEnabled, setNotificationEnabled] = useState(false);
   const [showInterests, setShowInterests] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [visitReservations, setVisitReservations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    const fetchReservations = async () => {
+      if (!user) return;
+
+      try {
+        const q = query(
+          collection(db, 'reservations'),
+          where('userId', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        );
+
+        const querySnapshot = await getDocs(q);
+        const reservationList = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            // createdAt이나 visitDate가 존재할 때만 toDate() 호출
+            visitDate: data.visitDate?.toDate?.() || new Date(),
+            createdAt: data.createdAt?.toDate?.() || new Date()
+          };
+        });
+
+        setVisitReservations(reservationList);
+      } catch (error) {
+        console.error('예약 정보 조회 중 오류:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReservations();
+  }, [user]);
+
+  // 사용자 정보 불러오기
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user?.uid) return;
+
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          setUserData(userDoc.data());
+        }
+      } catch (error) {
+        console.error('사용자 정보 로드 실패:', error);
+      }
+    };
+
+    fetchUserData();
+  }, [user]);
 
   // FAQ 토글 함수
   const toggleFaq = (id) => {
@@ -43,11 +104,51 @@ const Profile = () => {
   };
 
   // 예약 삭제 실행
-  const handleDeleteConfirm = () => {
-    if (selectedReservation) {
-      removeReservation(selectedReservation);
+  const handleDeleteConfirm = async () => {
+    if (!selectedReservation) return;
+
+    try {
+      // Firestore에서 예약 문서 삭제
+      await deleteDoc(doc(db, 'reservations', selectedReservation.id));
+      
+      // 로컬 상태 업데이트
+      setVisitReservations(prev => 
+        prev.filter(reservation => reservation.id !== selectedReservation.id)
+      );
+
+      // 모달 닫기 및 상태 초기화
       setShowDeleteConfirm(false);
       setSelectedReservation(null);
+      
+      alert('예약이 취소되었습니다.');
+    } catch (error) {
+      console.error('예약 취소 중 오류:', error);
+      alert('예약 취소 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 기존의 openLoginModal을 handleLoginClick으로 변경
+  const handleLoginClick = () => {
+    setIsLoginModalOpen(true);
+  };
+
+  // 예약 삭제 함수
+  const handleDeleteReservation = async (reservationId) => {
+    if (!window.confirm('예약을 취소하시겠습니까?')) return;
+
+    try {
+      // Firestore에서 예약 문서 삭제
+      await deleteDoc(doc(db, 'reservations', reservationId));
+      
+      // 로컬 상태 업데이트
+      setVisitReservations(prev => 
+        prev.filter(reservation => reservation.id !== reservationId)
+      );
+
+      alert('예약이 취소되었습니다.');
+    } catch (error) {
+      console.error('예약 취소 중 오류:', error);
+      alert('예약 취소 중 오류가 발생했습니다.');
     }
   };
 
@@ -65,8 +166,12 @@ const Profile = () => {
                     <span className="material-icons text-3xl text-gray-400">person</span>
                   </div>
                   <div>
-                    <h2 className="font-medium text-lg">{user.name}</h2>
-                    <p className="text-gray-500">{user.phoneNumber}</p>
+                    <h2 className="font-medium text-lg">
+                      {userData?.name || '이름 없음'}
+                    </h2>
+                    <p className="text-gray-500">
+                      {userData?.phoneNumber || user?.phoneNumber || '전화번호 없음'}
+                    </p>
                   </div>
                 </div>
                 <button 
@@ -93,23 +198,23 @@ const Profile = () => {
               >
                 <span>예약 정보</span>
                 <div className="flex items-center gap-2">
-                  {reservations?.length > 0 && (
-                    <span className="text-green-500">{reservations.length}건</span>
+                  {visitReservations?.length > 0 && (
+                    <span className="text-green-500">{visitReservations.length}건</span>
                   )}
                   <span className="material-icons text-gray-400">
                     {showReservationDetails ? 'expand_less' : 'expand_more'}
                   </span>
                 </div>
               </button>
-              {showReservationDetails && reservations?.length > 0 && (
+              {showReservationDetails && visitReservations?.length > 0 && (
                 <div className="border-t px-4 py-2">
-                  {reservations.map((reservation, index) => (
-                    <div key={index} className="py-3 border-b last:border-0">
+                  {visitReservations.map((reservation) => (
+                    <div key={reservation.id} className="py-3 border-b last:border-0">
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <h3 className="font-medium">{reservation.carName}</h3>
                           <p className="text-sm text-gray-500">
-                            {formatDate(reservation.date)} {reservation.time}
+                            {formatDate(reservation.visitDate)} {reservation.time}
                           </p>
                         </div>
                         <button
@@ -161,7 +266,7 @@ const Profile = () => {
                 <div>
                   <h3 className="font-medium mb-1">알림 설정</h3>
                   <p className="text-sm text-gray-500">
-                    관심 있는 모델 매물을 푸시알림으로 받아보세요
+                    관심 차종이 등록되면 알림을 받아보세요😀
                   </p>
                 </div>
                 <button 
@@ -242,7 +347,7 @@ const Profile = () => {
             </div>
             <div className="flex justify-center">
               <button
-                onClick={openLoginModal}
+                onClick={handleLoginClick}
                 className="w-full max-w-[200px] px-6 py-3 bg-[#333333] text-white rounded-xl font-medium hover:bg-black transition-colors duration-200 flex items-center justify-center gap-2"
               >
                 <span className="material-icons text-sm">login</span>
@@ -357,6 +462,11 @@ const Profile = () => {
           </div>
         </div>
       )}
+
+      <LoginModal 
+        isOpen={isLoginModalOpen} 
+        onClose={() => setIsLoginModalOpen(false)} 
+      />
     </div>
   );
 };

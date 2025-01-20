@@ -1,9 +1,20 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import BottomCTA from "../components/BottomCTA";
 import { useFavorites } from "../contexts/FavoritesContext";
 
+const defaultCarImage = '/images/default-car.png';
+
+const getValidImageUrl = (imageUrl) => {
+  if (!imageUrl) return defaultCarImage;
+  if (imageUrl.startsWith('http')) return imageUrl;
+  if (imageUrl.startsWith('/')) return imageUrl;
+  return defaultCarImage;
+};
+
 const Favorites = () => {
+  const navigate = useNavigate();
   const { favorites, toggleFavorite } = useFavorites();
   const [activeTab, setActiveTab] = useState("favorites");
   const [recentViewed] = useState([]);
@@ -46,16 +57,27 @@ const Favorites = () => {
       <div className="flex-1 py-3">
         <div className="grid gap-3">
           {(activeTab === "favorites" ? favorites : recentViewed).map((item) => (
-            <div key={item.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div 
+              key={item.id} 
+              className="bg-white rounded-xl shadow-sm overflow-hidden cursor-pointer"
+              onClick={() => navigate(`/listing/${item.id}`)}
+            >
               <div className="relative">
                 <img
-                  src={item.image}
-                  alt={item.name}
+                  src={getValidImageUrl(item.images?.[0])}
+                  alt={item.name || '차량 이미지'}
                   className="w-full aspect-[4/3] object-cover"
+                  onError={(e) => {
+                    e.target.src = defaultCarImage;
+                    e.target.onerror = null;
+                  }}
                 />
                 <button 
                   className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-sm"
-                  onClick={() => toggleFavorite(item)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFavorite(item);
+                  }}
                 >
                   <span className="material-icons text-red-500">favorite</span>
                 </button>
@@ -63,16 +85,18 @@ const Favorites = () => {
               <div className="p-4">
                 <h3 className="font-medium text-gray-900">{item.name}</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  {item.year}년식 · {item.mileage}
+                  {item.year}년식 · {item.mileage}km
                 </p>
                 <p className="text-lg font-semibold text-green-500 mt-2">
-                  {item.price.toLocaleString()}만원
+                  {item.price && typeof item.price === 'number' 
+                    ? `${item.price.toLocaleString()}만원`
+                    : '가격 문의'}
                 </p>
               </div>
             </div>
           ))}
           
-          {activeTab === "favorites" && favorites.length === 0 && (
+          {activeTab === "favorites" && (!favorites || favorites.length === 0) && (
             <div className="text-center py-16">
               <p className="text-gray-500">찜한 매물이 없습니다.</p>
             </div>

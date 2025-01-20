@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { FavoritesProvider } from './contexts/FavoritesContext';
 import { ReservationProvider } from './contexts/ReservationContext';
 import { InterestProvider } from './contexts/InterestContext';
+import { RecentViewProvider } from './contexts/RecentViewContext';
 import NavigationBar from './components/NavigationBar';
 import Home from './pages/Home';
 import Listings from './pages/Listings';
@@ -21,23 +22,26 @@ function App() {
       <ReservationProvider>
         <FavoritesProvider>
           <InterestProvider>
-            <BrowserRouter>
-              <div className="flex flex-col min-h-screen bg-gray-50">
-                <div className="mx-auto w-full max-w-[480px] relative flex flex-col flex-1">
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/listings" element={<Listings />} />
-                    <Route path="/favorites" element={<Favorites />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/sell" element={<SellRegistration />} />
-                    <Route path="/listing/register" element={<ListingRegistration />} />
-                    <Route path="/listing/:id" element={<ListingDetail />} />
-                    <Route path="/listing/edit/:id" element={<ListingEdit />} />
-                  </Routes>
-                  <NavigationBar />
+            <RecentViewProvider>
+              <BrowserRouter>
+                <div className="flex flex-col min-h-screen bg-gray-50">
+                  <div className="mx-auto w-full max-w-[480px] relative flex flex-col flex-1">
+                    <Routes>
+                      <Route path="/" element={<Home />} />
+                      <Route path="/listings" element={<Listings />} />
+                      <Route path="/listings/:id" element={<ListingDetail />} />
+                      <Route path="/favorites" element={<Favorites />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/sell" element={<SellRegistration />} />
+                      <Route path="/listing/register" element={<ListingRegistration />} />
+                      <Route path="/listing/:id" element={<ListingDetail />} />
+                      <Route path="/listing/edit/:id" element={<ListingEdit />} />
+                    </Routes>
+                    <NavigationBar />
+                  </div>
                 </div>
-              </div>
-            </BrowserRouter>
+              </BrowserRouter>
+            </RecentViewProvider>
           </InterestProvider>
         </FavoritesProvider>
       </ReservationProvider>

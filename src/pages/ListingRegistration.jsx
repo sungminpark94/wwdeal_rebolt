@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
+import { collection, addDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../firebase/config';
 
 const ListingRegistration = () => {
   const navigate = useNavigate();
@@ -180,11 +183,71 @@ const ListingRegistration = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // TODO: Firebase에 데이터 저장 로직 구현
-      console.log('Form submitted:', formData);
-      navigate('/listings');
+      // 이미지 업로드 처리
+      const imageUrls = await Promise.all(
+        formData.images.map(async (image) => {
+          const storageRef = ref(storage, `listings/${Date.now()}-${image.name}`);
+          const snapshot = await uploadBytes(storageRef, image);
+          return await getDownloadURL(snapshot.ref);
+        })
+      );
+
+      // 배터리 이미지 업로드 처리 (전기차인 경우)
+      let batteryImageUrls = [];
+      if (formData.fuel === '전기' && formData.battery.images.length > 0) {
+        batteryImageUrls = await Promise.all(
+          formData.battery.images.map(async (image) => {
+            const storageRef = ref(storage, `batteries/${Date.now()}-${image.name}`);
+            const snapshot = await uploadBytes(storageRef, image);
+            return await getDownloadURL(snapshot.ref);
+          })
+        );
+      }
+
+      // 점검 이미지 업로드 처리
+      const inspectionImagesPromises = Object.entries(formData.inspections).map(async ([part, data]) => {
+        if (data.images.length > 0) {
+          const urls = await Promise.all(
+            data.images.map(async (image) => {
+              const storageRef = ref(storage, `inspections/${part}/${Date.now()}-${image.name}`);
+              const snapshot = await uploadBytes(storageRef, image);
+              return await getDownloadURL(snapshot.ref);
+            })
+          );
+          return [part, urls];
+        }
+        return [part, []];
+      });
+
+      const inspectionImagesResults = await Promise.all(inspectionImagesPromises);
+      const inspectionImages = Object.fromEntries(inspectionImagesResults);
+
+      // Firestore에 데이터 저장
+      const listingData = {
+        ...formData,
+        images: imageUrls,
+        battery: {
+          ...formData.battery,
+          images: batteryImageUrls
+        },
+        inspections: Object.entries(formData.inspections).reduce((acc, [part, data]) => ({
+          ...acc,
+          [part]: {
+            ...data,
+            images: inspectionImages[part]
+          }
+        }), {}),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const docRef = await addDoc(collection(db, 'listings'), listingData);
+      console.log('Document written with ID: ', docRef.id);
+      
+      navigate(`/listing/${docRef.id}`);
     } catch (error) {
       console.error('Error submitting form:', error);
+      alert('매물 등록 중 오류가 발생했습니다.');
     }
   };
 
@@ -545,7 +608,7 @@ const ListingRegistration = () => {
                 <div className={`px-2 py-1 rounded-full text-sm ${
                   data.status === '양호'
                     ? 'bg-green-50 text-green-600'
-                    : data.status === '수리필요'
+                    : data.status === '확인필요'
                     ? 'bg-yellow-50 text-yellow-600'
                     : 'bg-red-50 text-red-600'
                 }`}>
@@ -555,7 +618,7 @@ const ListingRegistration = () => {
 
               {/* 상태 선택 버튼 */}
               <div className="grid grid-cols-3 gap-2">
-                {['양호', '수리필요', '교체필요'].map(status => (
+                {['양호', '확인필요', '이상있음'].map(status => (
                   <button
                     type="button"
                     key={status}
@@ -564,7 +627,7 @@ const ListingRegistration = () => {
                       data.status === status
                         ? status === '양호'
                           ? 'bg-green-50 border-green-200 text-green-600'
-                          : status === '수리필요'
+                          : status === '확인필요'
                           ? 'bg-yellow-50 border-yellow-200 text-yellow-600'
                           : 'bg-red-50 border-red-200 text-red-600'
                         : 'bg-gray-50 border-gray-200 text-gray-600'
@@ -611,7 +674,7 @@ const ListingRegistration = () => {
               <textarea
                 value={data.comment}
                 onChange={(e) => handleInspectionChange(part, 'comment', e.target.value)}
-                placeholder="문제 상황을 자세히 설명해주세요"
+                placeholder="차량 상태를 자세히 설명해주세요"
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg resize-none"
               />
             </div>
