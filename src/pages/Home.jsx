@@ -23,11 +23,14 @@ const getValidImageUrl = (imageUrl) => {
 const BannerContent = ({ bannerId, setShowBannerSheet }) => {
   const { user, openLoginModal } = useAuth();
   const [showAlert, setShowAlert] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleSubscribe = () => {
     if (!user) {
-      openLoginModal();
+      console.log('user not found');
+      setIsLoginModalOpen(true);
       return;
     }
 
@@ -70,7 +73,7 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
                 <span>•</span>
                 <span>205,000km</span>
                 <span>•</span>
-                <span className="text-green-600 font-medium">가격 미정</span>
+                <span className="text-green-600 font-medium">1,190만원(예정)</span>
               </div>
             </div>
           </div>
@@ -121,9 +124,32 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
                   <span className="material-icons text-green-500 text-sm">check_circle</span>
                   <span>파워스티어링 휠</span>
                 </div>
+                {showMoreOptions && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="material-icons text-green-500 text-sm">check_circle</span>
+                      <span>후방 카메라</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="material-icons text-green-500 text-sm">check_circle</span>
+                      <span>블루투스</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="material-icons text-green-500 text-sm">check_circle</span>
+                      <span>크루즈 컨트롤</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="material-icons text-green-500 text-sm">check_circle</span>
+                      <span>열선시트</span>
+                    </div>
+                  </>
+                )}
               </div>
-              <button className="w-full mt-3 text-center text-sm text-gray-500">
-                더보기
+              <button 
+                onClick={() => setShowMoreOptions(!showMoreOptions)}
+                className="w-full mt-3 text-center text-sm text-gray-500 hover:text-gray-700"
+              >
+                {showMoreOptions ? '접기' : '더보기'}
               </button>
             </div>
           </div>
@@ -138,7 +164,7 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
 
           {/* 윈윈딜 서비스 안내 */}
           <div className="space-y-6">
-            <h3 className="font-bold text-lg">윈윈딜 서비스 안내</h3>
+            <h3 className="font-bold text-lg">믿을 수 있는 중고차 직거래, 윈윈딜</h3>
             
             {/* 전문가 검증 서비스 */}
             <div className="bg-white border rounded-xl p-5">
@@ -147,87 +173,86 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
                   <span className="material-icons text-blue-600">verified</span>
                 </div>
                 <div>
-                  <h4 className="font-bold text-lg mb-3">전문가의 차량 검증 서비스</h4>
+                  <h4 className="font-bold text-lg mb-3">전문가의 꼼꼼한 차량 검증</h4>
                   <ul className="space-y-2 text-gray-600">
                     <li className="flex items-center gap-2">
                       <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      150가지 체크리스트로 꼼꼼한 차량 검수
+                      경력 평가사(정비사)의 150가지 체크리스트 검수
+                    </li>
+                    
+                    <li className="flex items-center gap-2">
+                      <span className="material-icons text-green-500 text-sm">check_circle</span>
+                      전문가의 상세한 차량 상태 리포트 제공
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      실제 주행 테스트 완료
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      전문가의 객관적인 상태 평가
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      정확한 사고이력 및 수리 내역 제공
+                      허위매물 ZERO, 실제 존재하는 매물만 소개
                     </li>
                   </ul>
                 </div>
               </div>
             </div>
 
-            {/* 합리적인 직거래 가격 */}
+            {/* 투명한 직거래 가격 */}
             <div className="bg-white border rounded-xl p-5">
               <div className="flex gap-4">
                 <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
                   <span className="material-icons text-green-600">payments</span>
                 </div>
                 <div>
-                  <h4 className="font-bold text-lg mb-3">합리적인 직거래 가격</h4>
+                  <h4 className="font-bold text-lg mb-3">투명한 직거래 가격</h4>
                   <ul className="space-y-2 text-gray-600">
                     <li className="flex items-center gap-2">
                       <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      구매자 수수료 완전 무료
+                      구매자 수수료 0원, 숨겨진 비용 없음
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      딜러 수수료 없는 직거래 가격
+                      실거래가 데이터 기반의 합리적인 가격 책정
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      실거래가 데이터 기반의 정직한 가격
+                      딜러 수수료 절감으로 평균 50~500만원 저렴
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      시장 평균 대비 50~100만원 저렴
+                      가격 흥정 없이 명확한 가격 제시
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      불필요한 가격 흥정 NO
+                      에스크로 방식으로 안전한 거래 진행
                     </li>
                   </ul>
                 </div>
               </div>
             </div>
 
-            {/* 편안한 구매 프로세스 */}
+            {/* 안심 구매 프로세스 */}
             <div className="bg-white border rounded-xl p-5">
               <div className="flex gap-4">
                 <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
                   <span className="material-icons text-purple-600">support_agent</span>
                 </div>
                 <div>
-                  <h4 className="font-bold text-lg mb-3">편안한 구매 프로세스</h4>
+                  <h4 className="font-bold text-lg mb-3">전문가와 함께하는 안심 구매</h4>
                   <ul className="space-y-2 text-gray-600">
+                    
                     <li className="flex items-center gap-2">
                       <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      매물 확인부터 계약까지 전문가 동행
+                      전담 매니저의 신속한 응대
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      차량 상태 상세 설명
+                      전담 매니저의 차량 상태와 옵션 상세 설명
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      모든 서류 준비 대행
+                      등록부터 보험까지 모든 서류 업무 대행
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="material-icons text-green-500 text-sm">check_circle</span>
-                      명의이전 및 보험가입 지원
+                      구매 후 2주간 차량 이상 시 수리 지원
+                      <br/>(설명과 다른 경우 무상 지원)
                     </li>
                   </ul>
                 </div>
@@ -252,6 +277,12 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
             >
               판매 시 알림받기
             </button>
+
+            {/* 로그인 모달 */}
+            <LoginModal 
+            isOpen={isLoginModalOpen}
+            onClose={() => setIsLoginModalOpen(false)}
+            />
           </div>
         </div>
       );
@@ -405,7 +436,7 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
           <div className="bg-white border rounded-xl p-6">
             <h3 className="font-bold text-lg mb-4">이렇게 진행됩니다</h3>
             <ol className="space-y-2">
-              <li>1. 일단 무료로 상담이 진행되요</li>
+              <li>1. 일단 무료로 상담이 진행돼요</li>
               <li>2. 전문가가 찾아가서 판매가를 제안해요</li>
               <li>3. 괜찮은 가격이면 시작해 주세요</li>
               <li>4. 이후 절차는 저희가 다 할게요</li>
@@ -477,15 +508,9 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
           {/* 메인 타이틀 섹션 */}
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-bold mb-4">
-              믿을 수 있는 중고차 직거래, 윈윈딜
+              중고차 구매할 때 <br/>
+              이런 경험 있으신가요?
             </h1>
-            <h2 className="text-xl font-bold">
-              중고차 구매, 이런 경험 있으신가요?
-            </h2>
-            <p className="text-gray-600">
-              "차량 상태는 괜찮은데,<br/>
-              딜러 수수료가 너무 비싸서 고민이에요."
-            </p>
           </div>
 
           {/* 문제 제기 섹션 */}
@@ -494,14 +519,18 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
               {/* 첫 번째 메시지 */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-lg leading-relaxed">
-                  가성비 있게 중고차 구매하려는 건데,<br/>
-                  생각한 것보다 돈이 더 많이 드시죠?
+                <h2 className="text-xl font-bold">
+                  "차량 상태는 괜찮은데, <br/>
+                  딜러 거래는 수수료 및 기타 비용이 <br/>
+                  너무 비싸서 고민이에요."
+                </h2>
                 </p>
               </div>
               
               {/* 두 번째 메시지 */}
               <div className="bg-blue-50 rounded-lg p-4">
                 <p className="text-lg leading-relaxed text-blue-800">
+                
                   이제 중고차 구매를 조금 더<br/>
                   합리적으로 할 수 있도록 도와드릴게요.
                 </p>
@@ -510,8 +539,8 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
               {/* 강조 메시지 */}
               <div className="bg-black text-white rounded-lg p-4">
                 <p className="text-lg font-bold leading-relaxed text-center">
-                  가장 저렴하게 구매할 수 있는 방법은<br/>
-                  <span className="text-xl text-yellow-400">직거래</span>입니다.
+                  중고차를 가장 합리적으로 <br/>
+                  <span className="text-xl text-yellow-400"> 구매할 수 있는 방법은 직거래</span>입니다.
                 </p>
               </div>
             </div>
@@ -595,7 +624,7 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
               </li>
               <li className="flex items-center gap-2">
                 <span className="material-icons text-green-500 text-sm">check_circle</span>
-                <span>시장 평균 대비 50~100만원 저렴</span>
+                <span>시장 평균 대비 50~500만원까지 저렴</span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="material-icons text-green-500 text-sm">check_circle</span>
@@ -739,6 +768,7 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
               매물 보러가기
             </button>
           </div>
+          
         </div>
       );
 
@@ -758,7 +788,6 @@ const Home = () => {
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const navigate = useNavigate();
   const [recentViews, setRecentViews] = useState([]);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   // 최근 본 차량 불러오기
@@ -811,7 +840,7 @@ const Home = () => {
 
   const handleSave = async () => {
     if (!user) {
-      setShowLoginModal(true);
+      setIsLoginModalOpen(true);
       return;
     }
 
@@ -823,6 +852,13 @@ const Home = () => {
     setTimeout(() => {
       setShowSuccessToast(false);
     }, 3000);
+  };
+
+  const handleSubscribe = () => {
+    if (!user) {
+      setIsLoginModalOpen(true);
+      return;
+    }
   };
 
   return (
@@ -981,7 +1017,7 @@ const Home = () => {
               <div className="overflow-y-auto flex-1">
                 <BannerContent 
                   bannerId={selectedBanner} 
-                  setShowBannerSheet={setShowBannerSheet} 
+                  setShowBannerSheet={setShowBannerSheet}
                 />
               </div>
             </div>
@@ -1041,7 +1077,7 @@ const Home = () => {
 
       <BottomCTA />
 
-      {/* Profile 페이지와 동일한 LoginModal 사용 */}
+      {/* 로그인 모달 */}
       <LoginModal 
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}

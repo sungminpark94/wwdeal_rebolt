@@ -68,6 +68,7 @@ const Profile = () => {
   // 사용자 정보 불러오기
   useEffect(() => {
     const fetchUserData = async () => {
+      console.log('user', user)
       if (!user?.uid) return;
 
       try {
@@ -151,6 +152,15 @@ const Profile = () => {
       alert('예약 취소 중 오류가 발생했습니다.');
     }
   };
+  
+  const handleLogout = () => {
+    if (logout) {
+      logout();
+      navigate('/');
+    } else {
+      console.error('logout function is not available');
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -175,7 +185,7 @@ const Profile = () => {
                   </div>
                 </div>
                 <button 
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="px-4 py-2 text-gray-500 hover:bg-gray-50 rounded-lg"
                 >
                   로그아웃

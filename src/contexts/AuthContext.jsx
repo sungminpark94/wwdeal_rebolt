@@ -3,12 +3,13 @@ import { auth, db } from '../firebase/config';
 import { onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  console.log('userauth', user)
 
   // 로그인 모달 관련 함수들
   const openLoginModal = () => {
@@ -53,20 +54,26 @@ export const AuthProvider = ({ children }) => {
   };
 
   // 인증번호 확인
-  const verifyCode = async (verificationCode) => {
+  const verifyCode = async (verificationId, verificationCode) => {
     try {
-      const confirmationResult = window.confirmationResult;
-      if (!confirmationResult) {
-        throw new Error('먼저 인증번호를 요청해주세요.');
-      }
+      // const confirmationResult = window.confirmationResult;
+      // if (!confirmationResult) {
+      //   throw new Error('먼저 인증번호를 요청해주세요.');
+      // }
 
-      const result = await confirmationResult.confirm(verificationCode);
+      const result = await verificationId.confirm(verificationCode);
       setUser(result.user);
+      console.log('result.user', result.user)
       return result.user;
     } catch (error) {
       console.error("Error verifying code:", error);
       throw error;
     }
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.clear();
   };
 
   const value = {
@@ -75,7 +82,8 @@ export const AuthProvider = ({ children }) => {
     isLoginModalOpen,
     setIsLoginModalOpen,
     sendVerificationCode,
-    verifyCode
+    verifyCode,
+    logout
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

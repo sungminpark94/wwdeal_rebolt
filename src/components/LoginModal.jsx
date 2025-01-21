@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
+import { useAuth } from '../contexts/AuthContext';
+
 
 const LoginModal = ({ isOpen, onClose }) => {
+  const {verifyCode} = useAuth();
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -74,8 +77,9 @@ const LoginModal = ({ isOpen, onClose }) => {
       setLoading(true);
       setError(null);
       
-      const result = await verificationId.confirm(verificationCode);
+      const result = await verifyCode(verificationId, verificationCode);
       console.log('User signed in:', result.user);
+
       onClose(); // 성공 시 모달 닫기
     } catch (error) {
       console.error('Error:', error);

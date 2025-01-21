@@ -15,6 +15,7 @@ import ListingRegistration from './pages/ListingRegistration';
 import ListingDetail from './pages/ListingDetail';
 import ListingEdit from './pages/ListingEdit';
 import Header from './components/Header';
+import ScrollToTop from './components/ScrollToTop';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <InterestProvider>
             <RecentViewProvider>
               <BrowserRouter>
+                <ScrollToTop />
                 <div className="flex flex-col min-h-screen bg-gray-50">
                   <div className="mx-auto w-full max-w-[480px] relative flex flex-col flex-1">
                     <Routes>

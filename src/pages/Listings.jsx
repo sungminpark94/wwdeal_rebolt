@@ -143,7 +143,7 @@ const Listings = () => {
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header title="매물 목록" />
       <div className="max-w-[480px] mx-auto w-full px-4">
-        <div className="sticky top-0 bg-white border-b z-10 py-4">
+        <div className="sticky top-0 z-10 py-4">
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons text-gray-400">
               search
