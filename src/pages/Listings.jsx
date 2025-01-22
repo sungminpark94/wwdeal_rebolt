@@ -49,7 +49,7 @@ const Listings = () => {
         );
         const querySnapshot = await getDocs(q);
         const listingsData = [];
-
+        
         querySnapshot.forEach((doc) => {
           const data = doc.data();
           listingsData.push({
@@ -79,7 +79,7 @@ const Listings = () => {
 
   const fetchMoreListings = async () => {
     if (!lastDoc || loading) return;
-
+    
     setLoading(true);
     try {
       const q = query(
@@ -90,7 +90,7 @@ const Listings = () => {
       );
       const querySnapshot = await getDocs(q);
       const newListings = [];
-
+      
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         newListings.push({
@@ -104,7 +104,7 @@ const Listings = () => {
           updatedAt: data.updatedAt?.toDate?.() || new Date(),
         });
       });
-
+      
       setListings(prev => [...prev, ...newListings]);
       setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
       setHasMore(querySnapshot.docs.length === ITEMS_PER_PAGE);
@@ -180,11 +180,11 @@ const Listings = () => {
                 >
                   <div className="relative">
                     <img
-                      src={item.images || defaultCarImage}
+                      src={item.images }
                       alt={item.title}
                       className="w-full aspect-[4/3] object-cover"
                       onError={(e) => {
-                        e.target.src = defaultCarImage;
+                        e.target.src = null;
                         e.target.onerror = null;
                       }}
                     />

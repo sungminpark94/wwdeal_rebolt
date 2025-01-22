@@ -5,6 +5,26 @@ import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 
+const INSPECTION_ITEMS = [
+  { id: 'exterior', label: '외관' },
+  { id: 'paint', label: '도장 상태' },
+  { id: 'interior', label: '내장' },
+  { id: 'tire', label: '타이어' },
+  { id: 'seat', label: '시트' },
+  { id: 'undercarriage', label: '하부' },
+  { id: 'leakage', label: '누유·누수' },
+  { id: 'consumables', label: '소모품 상태' }
+];
+
+const initialInspections = INSPECTION_ITEMS.reduce((acc, item) => {
+  acc[item.id] = {
+    images: [],
+    status: '',
+    comment: ''
+  };
+  return acc;
+}, {});
+
 const ListingRegistration = () => {
   const navigate = useNavigate();
   
@@ -33,34 +53,11 @@ const ListingRegistration = () => {
     },
     options: [],
     sellerComment: '',
-    inspections: {
-      exterior: {
-        status: '양호',
-        comment: '',
-        images: []
-      },
-      paint: {
-        status: '양호',
-        comment: '',
-        images: []
-      },
-      interior: {
-        status: '양호',
-        comment: '',
-        images: []
-      },
-      tire: {
-        status: '양호',
-        comment: '',
-        images: []
-      },
-      seat: {
-        status: '양호',
-        comment: '',
-        images: []
-      }
-    }
+    inspections: initialInspections
   });
+
+  const [imageFiles, setImageFiles] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
 
   // 이미지 미리보기 상태
   const [imagePreview, setImagePreview] = useState([]);
@@ -70,7 +67,10 @@ const ListingRegistration = () => {
     paint: [],
     interior: [],
     tire: [],
-    seat: []
+    seat: [],
+    undercarriage: [],
+    leakage: [],
+    consumables: []
   });
 
   // 기본 옵션 목록
@@ -159,30 +159,69 @@ const ListingRegistration = () => {
     }));
   };
 
-  const handleInspectionImageUpload = (part, e) => {
+  const handleInspectionImageUpload = async (e, itemId) => {
     const files = Array.from(e.target.files);
-    const previews = files.map(file => URL.createObjectURL(file));
-    
-    setImagePreviewMap(prev => ({
-      ...prev,
-      [part]: [...prev[part], ...previews]
-    }));
+    if (!files.length) return;
+
+    try {
+      const newImageUrls = [];
+      const newImageFiles = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const imageUrl = URL.createObjectURL(file);
+        newImageUrls.push(imageUrl);
+        newImageFiles.push(file);
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        inspections: {
+          ...prev.inspections,
+          [itemId]: {
+            ...prev.inspections[itemId],
+            images: [...(prev.inspections[itemId].images || []), ...newImageUrls]
+          }
+        }
+      }));
+
+      setImageFiles(prev => ({
+        ...prev,
+        [itemId]: [...(prev[itemId] || []), ...newImageFiles]
+      }));
+    } catch (error) {
+      console.error("Error handling image upload:", error);
+      alert("이미지 업로드 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleImageDelete = (itemId, index) => {
+    const imageUrl = formData.inspections[itemId].images[index];
+    if (imageUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(imageUrl);
+    }
 
     setFormData(prev => ({
       ...prev,
       inspections: {
         ...prev.inspections,
-        [part]: {
-          ...prev.inspections[part],
-          images: [...prev.inspections[part].images, ...files]
+        [itemId]: {
+          ...prev.inspections[itemId],
+          images: prev.inspections[itemId].images.filter((_, i) => i !== index)
         }
       }
+    }));
+
+    setImageFiles(prev => ({
+      ...prev,
+      [itemId]: (prev[itemId] || []).filter((_, i) => i !== index)
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      setIsLoading(true);
       // 이미지 업로드 처리
       const imageUrls = await Promise.all(
         formData.images.map(async (image) => {
@@ -248,6 +287,8 @@ const ListingRegistration = () => {
     } catch (error) {
       console.error('Error submitting form:', error);
       alert('매물 등록 중 오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -491,7 +532,7 @@ const ListingRegistration = () => {
               />
             </label>
 
-            {/* 이미지 미리보기 */}
+            {/* 썸네일 미리보기 */}
             {imagePreview.map((url, index) => (
               <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                 <img
@@ -594,25 +635,19 @@ const ListingRegistration = () => {
 
         {/* 검사 항목들 */}
         <div className="bg-white p-4 rounded-xl space-y-6">
-          {Object.entries(formData.inspections).map(([part, data]) => (
-            <div key={part} className="space-y-4">
+          {INSPECTION_ITEMS.map(({ id, label }) => (
+            <div key={id} className="space-y-4">
               {/* 파트 제목과 상태 표시 */}
               <div className="flex items-center justify-between">
-                <h3 className="font-medium">
-                  {part === 'exterior' && '외관'}
-                  {part === 'paint' && '도장 상태'}
-                  {part === 'interior' && '내장'}
-                  {part === 'tire' && '타이어'}
-                  {part === 'seat' && '시트'}
-                </h3>
+                <h3 className="font-medium">{label}</h3>
                 <div className={`px-2 py-1 rounded-full text-sm ${
-                  data.status === '양호'
+                  formData.inspections[id].status === '양호'
                     ? 'bg-green-50 text-green-600'
-                    : data.status === '확인필요'
+                    : formData.inspections[id].status === '확인필요'
                     ? 'bg-yellow-50 text-yellow-600'
                     : 'bg-red-50 text-red-600'
                 }`}>
-                  {data.status}
+                  {formData.inspections[id].status}
                 </div>
               </div>
 
@@ -622,9 +657,9 @@ const ListingRegistration = () => {
                   <button
                     type="button"
                     key={status}
-                    onClick={() => handleInspectionChange(part, 'status', status)}
+                    onClick={() => handleInspectionChange(id, 'status', status)}
                     className={`py-3 rounded-xl text-sm border ${
-                      data.status === status
+                      formData.inspections[id].status === status
                         ? status === '양호'
                           ? 'bg-green-50 border-green-200 text-green-600'
                           : status === '확인필요'
@@ -641,9 +676,9 @@ const ListingRegistration = () => {
               {/* 이미지 업로드 섹션 */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">{part} 사진</span>
+                  <span className="text-sm text-gray-600">{label} 사진</span>
                   <span className="text-sm text-gray-400">
-                    {imagePreviewMap[part].length}/10장
+                    {formData.inspections[id].images.length}/10장
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
@@ -654,17 +689,24 @@ const ListingRegistration = () => {
                       type="file"
                       accept="image/*"
                       multiple
-                      onChange={(e) => handleInspectionImageUpload(part, e)}
+                      onChange={(e) => handleInspectionImageUpload(e, id)}
                       className="hidden"
                     />
                   </label>
-                  {imagePreviewMap[part].map((url, index) => (
-                    <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                  {formData.inspections[id].images.map((url, index) => (
+                    <div key={index} className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
                       <img
                         src={url}
-                        alt={`${part} ${index + 1}`}
+                        alt={`${label} ${index + 1}`}
                         className="w-full h-full object-cover"
                       />
+                      <button
+                        type="button"
+                        onClick={() => handleImageDelete(id, index)}
+                        className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-colors"
+                      >
+                        <span className="material-icons text-white text-lg">close</span>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -672,8 +714,8 @@ const ListingRegistration = () => {
 
               {/* 코멘트 입력 */}
               <textarea
-                value={data.comment}
-                onChange={(e) => handleInspectionChange(part, 'comment', e.target.value)}
+                value={formData.inspections[id].comment}
+                onChange={(e) => handleInspectionChange(id, 'comment', e.target.value)}
                 placeholder="차량 상태를 자세히 설명해주세요"
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg resize-none"
               />
@@ -688,9 +730,14 @@ const ListingRegistration = () => {
         <div className="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-full max-w-[500px] px-4 py-2 bg-white border-t">
           <button
             type="submit"
-            className="w-full bg-black text-white py-4 rounded-xl font-medium"
+            disabled={isLoading}
+            className={`w-full py-4 rounded-xl font-medium ${
+              isLoading 
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                : 'bg-black text-white'
+            }`}
           >
-            매물 등록하기
+            {isLoading ? '등록 중...' : '매물 등록하기'}
           </button>
         </div>
       </form>

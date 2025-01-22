@@ -153,15 +153,6 @@ const Profile = () => {
     }
   };
   
-  const handleLogout = () => {
-    if (logout) {
-      logout();
-      navigate('/');
-    } else {
-      console.error('logout function is not available');
-    }
-  };
-
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header title="프로필" />
@@ -185,7 +176,7 @@ const Profile = () => {
                   </div>
                 </div>
                 <button 
-                  onClick={handleLogout}
+                  onClick={logout}
                   className="px-4 py-2 text-gray-500 hover:bg-gray-50 rounded-lg"
                 >
                   로그아웃

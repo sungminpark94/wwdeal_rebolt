@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc, deleteDoc, updateDoc, arrayUnion, Timestamp } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
+import ImageViewer from '../components/ImageViewer';
 
 const ListingDetail = () => {
   const { id } = useParams();
@@ -15,6 +16,8 @@ const ListingDetail = () => {
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedImages, setSelectedImages] = useState(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   // Firebase에서 데이터 가져오기
   useEffect(() => {
@@ -126,6 +129,62 @@ const ListingDetail = () => {
     ? listing.options 
     : listing.options.slice(0, 6);
 
+  // 순서 수정
+  const INSPECTION_ITEMS = [
+    { id: 'exterior', label: '외관' },
+    { id: 'interior', label: '내부·기능' },
+    { id: 'undercarriage', label: '하부' },
+    { id: 'seat', label: '시트' },
+    { id: 'tire', label: '타이어' },
+    { id: 'leakage', label: '누유·누수' },
+    { id: 'paint', label: '도장 상태' },
+    { id: 'consumables', label: '소모품 상태' }
+  ];
+
+  const renderInspectionSections = () => {
+    return INSPECTION_ITEMS.map(({ id, label }) => {
+      const inspection = listing?.inspections?.[id];
+      
+      return (
+        <div key={id} className="bg-white p-4 rounded-xl space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium">{label}</h2>
+            <span className={`px-2 py-1 rounded-full text-sm ${
+              inspection?.status === '양호' ? 'bg-green-100 text-green-800' : 
+              inspection?.status === '확인필요' ? 'bg-red-100 text-red-800' : 
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {inspection?.status || '상태 미입력'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {inspection?.images?.map((url, index) => (
+              <div 
+                key={index} 
+                className="aspect-square rounded-lg overflow-hidden"
+                onClick={() => {
+                  setSelectedImages(inspection.images);
+                  setSelectedImageIndex(index);
+                }}
+              >
+                <img
+                  src={url}
+                  alt={`${label} ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+
+          <p className="text-gray-600 text-sm">
+            {inspection?.comment || '설명이 없습니다.'}
+          </p>
+        </div>
+      );
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
       <Header 
@@ -139,30 +198,63 @@ const ListingDetail = () => {
       />
       
       {/* 이미지 슬라이더 */}
-      {listing.images.length > 0 && (
-        <div className="relative aspect-square bg-gray-100">
-          <img 
-            src={getValidImageUrl(listing.images?.[0])}
-            alt={listing.name || '차량 이미지'}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              e.target.src = defaultCarImage;
-              e.target.onerror = null; // 무한 루프 방지
-            }}
-          />
-          {listing.images.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1">
-              {listing.images.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentImageIndex(index)}
-                  className={`w-2 h-2 rounded-full ${
-                    currentImageIndex === index ? 'bg-white' : 'bg-white/50'
-                  }`}
-                />
+      {listing?.images && listing.images.length > 0 && (
+        <div className="relative w-full aspect-square bg-gray-100">
+          <div className="w-full h-full flex overflow-hidden">
+            <div 
+              className="flex transition-transform duration-300 ease-out"
+              style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
+            >
+              {listing.images.map((url, index) => (
+                <div 
+                  key={index} 
+                  className="w-full h-full flex-shrink-0"
+                >
+                  <img 
+                    src={url}
+                    alt={listing.name || '차량 이미지'}
+                    className="w-full h-full object-cover"
+                    draggable={false}
+                  />
+                </div>
               ))}
             </div>
+          </div>
+
+          {/* 좌우 버튼 */}
+          {listing.images.length > 1 && (
+            <>
+              <button
+                onClick={() => setCurrentImageIndex(prev => Math.max(0, prev - 1))}
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors"
+                style={{ display: currentImageIndex === 0 ? 'none' : 'block' }}
+              >
+                <span className="material-icons">chevron_left</span>
+              </button>
+              <button
+                onClick={() => setCurrentImageIndex(prev => Math.min(listing.images.length - 1, prev + 1))}
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors"
+                style={{ display: currentImageIndex === listing.images.length - 1 ? 'none' : 'block' }}
+              >
+                <span className="material-icons">chevron_right</span>
+              </button>
+            </>
           )}
+
+          {/* 인디케이터 */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            {listing.images.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentImageIndex(index)}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  index === currentImageIndex 
+                    ? 'bg-white' 
+                    : 'bg-white/50 hover:bg-white/70'
+                }`}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -239,44 +331,7 @@ const ListingDetail = () => {
       </div>
 
       {/* 검사 항목들 */}
-      {Object.entries(listing.inspections).map(([part, data]) => (
-        <div key={part} className="mt-2 p-4 bg-white">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium">
-              {part === 'exterior' && '외관'}
-              {part === 'paint' && '도장 상태'}
-              {part === 'interior' && '내장'}
-              {part === 'tire' && '타이어'}
-              {part === 'seat' && '시트'}
-            </h3>
-            <div className={`px-2 py-1 rounded-full text-sm ${
-              data.status === '양호'
-                ? 'bg-green-50 text-green-600'
-                : data.status === '수리필요'
-                ? 'bg-yellow-50 text-yellow-600'
-                : 'bg-red-50 text-red-600'
-            }`}>
-              {data.status}
-            </div>
-          </div>
-          {data.comment && (
-            <p className="mt-2 text-sm text-gray-600">{data.comment}</p>
-          )}
-          {data.images && data.images.length > 0 && (
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {data.images.map((imageUrl, index) => (
-                <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100">
-                  <img 
-                    src={imageUrl} 
-                    alt={`${part} 이미지 ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+      {renderInspectionSections()}
 
       {/* 관리자 기능 */}
       {user?.role === 'admin' && (
@@ -346,6 +401,14 @@ const ListingDetail = () => {
           </button>
         </div>
       </div>
+
+      {selectedImages && (
+        <ImageViewer
+          images={selectedImages}
+          initialIndex={selectedImageIndex}
+          onClose={() => setSelectedImages(null)}
+        />
+      )}
     </div>
   );
 };
