@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase/config';
 import { doc, setDoc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
@@ -7,6 +7,7 @@ const FavoritesContext = createContext();
 
 export const FavoritesProvider = ({ children }) => {
   const [favorites, setFavorites] = useState([]);
+  const [recentViewed, setRecentViewed] = useState([]);
   const { user } = useAuth();
 
   // 사용자의 찜 목록 불러오기
@@ -89,8 +90,62 @@ export const FavoritesProvider = ({ children }) => {
     return favorites.some(item => item.id === itemId);
   };
 
+  // 최근 본 매물 추가 함수
+  const addToRecentViewed = useCallback(async (item) => {
+    if (!user) return;
+    
+    try {
+      const recentViewedRef = doc(db, `users/${user.uid}/recentViewed/items`);
+      const currentTime = new Date().getTime();
+      
+      // 최근 본 목록에서 중복 제거 및 최신 순으로 정렬
+      const updatedRecentViewed = [
+        item,
+        ...recentViewed.filter(i => i.id !== item.id)
+      ].slice(0, 20); // 최대 20개까지만 저장
+      
+      await setDoc(recentViewedRef, {
+        items: updatedRecentViewed,
+        updatedAt: currentTime
+      });
+      
+      setRecentViewed(updatedRecentViewed);
+    } catch (error) {
+      console.error('Error adding to recent viewed:', error);
+    }
+  }, [user, recentViewed]);
+
+  // 최근 본 매물 목록 불러오기
+  useEffect(() => {
+    if (!user) {
+      setRecentViewed([]);
+      return;
+    }
+
+    const loadRecentViewed = async () => {
+      try {
+        const recentViewedRef = doc(db, `users/${user.uid}/recentViewed/items`);
+        const docSnap = await getDoc(recentViewedRef);
+        
+        if (docSnap.exists()) {
+          setRecentViewed(docSnap.data().items || []);
+        }
+      } catch (error) {
+        console.error('Error loading recent viewed:', error);
+      }
+    };
+
+    loadRecentViewed();
+  }, [user]);
+
   return (
-    <FavoritesContext.Provider value={{ favorites, toggleFavorite, isFavorite }}>
+    <FavoritesContext.Provider value={{ 
+      favorites, 
+      toggleFavorite, 
+      isFavorite,
+      recentViewed,
+      addToRecentViewed 
+    }}>
       {children}
     </FavoritesContext.Provider>
   );
