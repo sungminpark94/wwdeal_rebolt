@@ -7,7 +7,7 @@ import { faqData } from "../data/faqData";
 import { useNavigate } from 'react-router-dom';
 import { useInterest } from '../contexts/InterestContext';
 import { useRecentViews } from "../contexts/RecentViewContext";
-import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp, updateDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import LoginModal from '../components/LoginModal';
 
@@ -790,29 +790,21 @@ const Home = () => {
   const [recentViews, setRecentViews] = useState([]);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
-  // 최근 본 차량 불러오기
   useEffect(() => {
-    const fetchRecentViews = async () => {
-      if (!user?.uid) return;
+    if (!user?.uid) return;
 
-      try {
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          const sortedViews = (userData.recentViews || [])
-            .sort((a, b) => b.viewedAt?.toDate?.() - a.viewedAt?.toDate?.())
-            .slice(0, 10);
-          
-          setRecentViews(sortedViews);
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribe = onSnapshot(userDocRef, (doc) => {
+      if (doc.exists()) {
+        const userData = doc.data();
+        if (userData.recentViews) {
+          console.log('Found recent views:', userData.recentViews);
+          setRecentViews(userData.recentViews);
         }
-      } catch (error) {
-        console.error('최근 본 차량 로드 실패:', error);
       }
-    };
+    });
 
-    fetchRecentViews();
+    return () => unsubscribe();
   }, [user]);
 
   const saveNotificationRequest = async (carModel) => {
@@ -903,41 +895,46 @@ const Home = () => {
           <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
             {recentViews && recentViews.length > 0 ? (
               <>
-                {recentViews.slice(-10).map((item) => (
-                  <div key={item.id} className="flex-shrink-0 w-40">
+                {recentViews.slice(0, 10).map((item, index) => (
+                  <div key={`${item.id}-${index}`} className="flex-shrink-0 w-40">
                     <div 
-                      className="bg-white rounded-lg p-3 cursor-pointer"
+                      className="bg-white rounded-lg p-3 cursor-pointer shadow-sm hover:shadow-md transition-shadow"
                       onClick={() => navigate(`/listing/${item.id}`)}
                     >
                       <img
-                        src={getValidImageUrl(item.images?.[0])}
-                        alt={item.title || '차량 이미지'}
+                        src={item.images?.[0]}
+                        alt={item.name}
                         className="w-full h-24 object-cover rounded mb-2"
                         onError={(e) => {
                           e.target.src = defaultCarImage;
                           e.target.onerror = null;
                         }}
                       />
-                      <p className="font-medium text-sm">{item.title}</p>
-                      <p className="text-sm text-gray-500">{item.model}</p>
-                      <p className="text-sm text-green-500 mt-1">
-                        {item.price && typeof item.price === 'number' 
-                          ? `${item.price.toLocaleString()}만원`
-                          : '가격 문의'}
+                      <p className="font-medium text-sm truncate">{item.name}</p>
+                      <div className="flex items-center gap-1 text-xs text-gray-500">
+                        <span>{item.year}년</span>
+                        <span>•</span>
+                        <span>{Number(item.mileage).toLocaleString()}km</span>
+                      </div>
+                      <p className="text-sm font-medium text-green-600 mt-1">
+                        {Number(item.price).toLocaleString()}만원
                       </p>
                     </div>
                   </div>
                 ))}
-                {recentViews.length > 10 && (
+                {recentViews.length >= 10 && (
                   <div className="flex-shrink-0 w-40">
                     <div 
-                      className="bg-white rounded-lg p-3 cursor-pointer h-full flex flex-col items-center justify-center border-2 border-dashed border-gray-300"
+                      className="bg-white rounded-lg p-3 cursor-pointer h-full flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors"
                       onClick={() => navigate('/favorites')}
                     >
                       <span className="material-icons text-gray-400 text-2xl mb-2">
                         add_circle_outline
                       </span>
                       <p className="text-sm text-gray-500">더보기</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        관심탭으로 이동
+                      </p>
                     </div>
                   </div>
                 )}

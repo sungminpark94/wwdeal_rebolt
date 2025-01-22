@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, getDoc, deleteDoc, updateDoc, arrayUnion, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, deleteDoc, updateDoc, arrayUnion, Timestamp, setDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import ImageViewer from '../components/ImageViewer';
@@ -110,6 +110,65 @@ const ListingDetail = () => {
     if (imageUrl.startsWith('/')) return imageUrl;
     return defaultCarImage;
   };
+
+  const saveToRecentViews = async (carData) => {
+    if (!user?.uid || !carData) {
+      console.log('No user or car data');
+      return;
+    }
+
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      
+      // 저장할 데이터 구조를 listing 데이터 그대로 사용
+      const recentViewData = {
+        id: id,
+        viewedAt: Timestamp.now(),
+        ...listing  // 전체 listing 데이터를 그대로 포함
+      };
+
+      // 기존 데이터 가져오기
+      const userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists()) {
+        // 사용자 문서가 없으면 새로 생성
+        await setDoc(userDocRef, {
+          recentViews: [recentViewData]
+        });
+        console.log('Created new user document with recent view');
+        return;
+      }
+
+      const userData = userDoc.data();
+      let currentViews = userData.recentViews || [];
+
+      // 중복 제거 및 최신 데이터 추가
+      currentViews = currentViews.filter(item => item.id !== id);
+      currentViews.unshift(recentViewData);
+
+      // 최대 10개로 제한
+      currentViews = currentViews.slice(0, 10);
+
+      // Firebase 업데이트
+      await updateDoc(userDocRef, {
+        recentViews: currentViews
+      });
+
+      console.log('Successfully saved recent view:', recentViewData);
+      console.log('Updated recent views:', currentViews);
+
+    } catch (error) {
+      console.error('Error saving recent view:', error);
+    }
+  };
+
+  // useEffect에서 호출
+  useEffect(() => {
+    console.log('Listing changed:', listing); // 디버깅용
+    if (listing && user) {
+      saveToRecentViews(listing);
+    }
+  }, [listing, user]);
 
   if (loading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
