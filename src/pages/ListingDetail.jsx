@@ -58,7 +58,10 @@ const ListingDetail = () => {
               paint: { status: '', comment: '', images: [] },
               interior: { status: '', comment: '', images: [] },
               tire: { status: '', comment: '', images: [] },
-              seat: { status: '', comment: '', images: [] }
+              seat: { status: '', comment: '', images: [] },
+              undercarriage: { status: '', comment: '', images: [] },
+              leakage: { status: '', comment: '', images: [] },
+              consumables: { status: '', comment: '', images: [] }
             },
             sellerComment: data.sellerComment || '',
             seller: data.seller || { name: '', phone: '' }

@@ -54,7 +54,7 @@ const Favorites = () => {
       </div>
 
       {/* 매물 목록 */}
-      <div className="flex-1 py-3">
+      <div className="flex-1 py-3 pb-24">
         <div className="grid gap-3">
           {(activeTab === "favorites" ? favorites : recentViewed).map((item) => (
             <div 
@@ -83,14 +83,14 @@ const Favorites = () => {
                 </button>
               </div>
               <div className="p-4">
-                <h3 className="font-medium text-gray-900">{item.name}</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  {item.year}년식 · {item.mileage}km
-                </p>
-                <p className="text-lg font-semibold text-green-500 mt-2">
-                  {item.price && typeof item.price === 'number' 
-                    ? `${item.price.toLocaleString()}만원`
-                    : '가격 문의'}
+                <h3 className="font-medium mb-1">{item.title}</h3>
+                <div className="text-sm text-gray-500 mb-2">
+                  <span>{item.year}년</span>
+                  <span className="mx-1">•</span>
+                  <span>{Number(item.mileage).toLocaleString()}km</span>
+                </div>
+                <p className="text-green-600 font-medium">
+                  {item.price ? `${Number(item.price).toLocaleString()}만원` : '가격문의'}
                 </p>
               </div>
             </div>

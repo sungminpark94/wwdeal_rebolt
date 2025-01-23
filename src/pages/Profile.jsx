@@ -68,15 +68,15 @@ const Profile = () => {
   // 사용자 정보 불러오기
   useEffect(() => {
     const fetchUserData = async () => {
-      console.log('user', user)
       if (!user?.uid) return;
 
       try {
         const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
+        const userDocSnap = await getDoc(userDocRef);
         
-        if (userDoc.exists()) {
-          setUserData(userDoc.data());
+        if (userDocSnap.exists()) {
+          setUserData(userDocSnap.data());
+          console.log('userData:', userDocSnap.data());
         }
       } catch (error) {
         console.error('사용자 정보 로드 실패:', error);

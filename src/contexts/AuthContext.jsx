@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../firebase/config';
 import { onAuthStateChanged, signOut, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export const AuthContext = createContext();
 
@@ -54,17 +54,38 @@ export const AuthProvider = ({ children }) => {
   };
 
   // 인증번호 확인
-  const verifyCode = async (verificationId, verificationCode) => {
+  const verifyCode = async (verificationId, verificationCode, name) => {
     try {
-      // const confirmationResult = window.confirmationResult;
-      // if (!confirmationResult) {
-      //   throw new Error('먼저 인증번호를 요청해주세요.');
-      // }
-
       const result = await verificationId.confirm(verificationCode);
-      setUser(result.user);
-      console.log('result.user', result.user)
-      return result.user;
+      const user = result.user;
+      
+      // 사용자 문서 참조
+      const userDocRef = doc(db, 'users', user.uid);
+      
+      // 현재 사용자 문서 가져오기
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (!userDocSnap.exists()) {
+        // 새 사용자인 경우
+        const userData = {
+          phoneNumber: user.phoneNumber,
+          name: name,
+          role: user.phoneNumber === '+821024079314' ? 'admin' : 'user',
+          createdAt: serverTimestamp(),
+        };
+        await setDoc(userDocRef, userData);
+        console.log('Created new user with role:', userData.role);
+      }
+
+      const finalUserDoc = await getDoc(userDocRef);
+      console.log('User role:', finalUserDoc.data().role);
+      
+      setUser({
+        ...user,
+        role: finalUserDoc.data().role // user 객체에 role 추가
+      });
+      
+      return user;
     } catch (error) {
       console.error("Error verifying code:", error);
       throw error;

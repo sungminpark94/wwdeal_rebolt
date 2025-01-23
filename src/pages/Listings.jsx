@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { collection, getDocs, query, orderBy, limit, startAfter } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, startAfter, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import Header from "../components/Header";
 import BottomCTA from "../components/BottomCTA";
@@ -17,16 +17,54 @@ const Listings = () => {
   const { user, openLoginModal } = useAuth();
   const { toggleFavorite, isFavorite } = useFavorites();
   const { addInterest } = useInterest();
-
+  const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuccessToast, setShowSuccessToast] = useState(false);
-  const [listings, setListings] = useState([]);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [lastDoc, setLastDoc] = useState(null);
   const observer = useRef();
   const ITEMS_PER_PAGE = 10;
+
+  const handleDeleteListing = async (e, listingId) => {
+    e.stopPropagation();  // 이벤트 버블링 방지
+    
+    if (!window.confirm('정말로 이 매물을 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      // Firestore에서 매물 문서 삭제
+      await deleteDoc(doc(db, 'listings', listingId));
+      
+      // 로컬 상태 업데이트
+      setListings(prevListings => 
+        prevListings.filter(listing => listing.id !== listingId)
+      );
+      
+      alert('매물이 삭제되었습니다.');
+    } catch (error) {
+      console.error('매물 삭제 중 오류:', error);
+      alert('매물 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        console.log('No user');
+        return;
+      }
+      
+      const isAdminUser = user.phoneNumber === '+821024079314';
+      console.log('Is admin?', isAdminUser);
+      setIsAdmin(isAdminUser);
+    };
+
+    checkAdmin();
+  }, [user]);
 
   const lastElementRef = useCallback(node => {
     if (loading) return;
