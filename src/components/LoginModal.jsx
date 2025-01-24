@@ -15,13 +15,23 @@ const LoginModal = ({ isOpen, onClose }) => {
   // reCAPTCHA 설정
   const setupRecaptcha = () => {
     const auth = getAuth();
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
+      window.recaptchaVerifier = null;
+    }
+    
     window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      'size': 'normal',
-      'callback': (response) => {
+      'size': 'invisible', // 'normal'에서 'invisible'로 변경
+      'callback': () => {
+        // reCAPTCHA solved, allow signInWithPhoneNumber.
         console.log('reCAPTCHA verified');
       },
       'expired-callback': () => {
+        // Response expired. Ask user to solve reCAPTCHA again.
         console.log('reCAPTCHA expired');
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
+        setupRecaptcha();
       }
     });
   };
@@ -40,18 +50,39 @@ const LoginModal = ({ isOpen, onClose }) => {
     };
   }, [isOpen]);
 
+  const formatPhoneNumber = (phoneNumber, defaultCountryCode = "+82") => {
+    // Check if the phone number matches the "01012345678" format
+    const isValid = /^010\d{8}$/.test(phoneNumber);
+
+    // If valid, prepend the default country code; otherwise, return an empty string
+    return isValid ? `${defaultCountryCode}${phoneNumber}`.replace(/^\+820/, "+82") : "";
+};
+
+
+
   const handleSendVerification = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      if (!window.recaptchaVerifier) {
-        setupRecaptcha();
+      // 이전 reCAPTCHA 인스턴스 정리
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
       }
+      
+      setupRecaptcha();
 
       const auth = getAuth();
-      const formattedPhoneNumber = `+82${phoneNumber.replace(/^0/, '')}`;
-      console.log('Sending verification to:', formattedPhoneNumber);
+      const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+      
+      // 요청 전에 유효성 검사
+      if (!formattedPhoneNumber) {
+        setError('올바른 전화번호 형식이 아닙니다.');
+        return;
+      }
+
+      console.log("Sending verification to:", formattedPhoneNumber);
       
       const confirmationResult = await signInWithPhoneNumber(
         auth,
@@ -63,7 +94,21 @@ const LoginModal = ({ isOpen, onClose }) => {
       alert('인증번호가 발송되었습니다.');
     } catch (error) {
       console.error('Error:', error);
-      setError('인증번호 발송에 실패했습니다: ' + error.message);
+      
+      // 구체적인 에러 메시지 처리
+      if (error.code === 'auth/too-many-requests') {
+        setError('너무 많은 인증 시도가 있었습니다. 잠시 후 다시 시도해주세요.');
+      } else if (error.code === 'auth/invalid-phone-number') {
+        setError('올바른 전화번호 형식이 아닙니다.');
+      } else {
+        setError('인증번호 발송에 실패했습니다: ' + error.message);
+      }
+
+      // reCAPTCHA 초기화
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
+      }
     } finally {
       setLoading(false);
     }

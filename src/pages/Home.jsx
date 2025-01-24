@@ -423,15 +423,10 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
                 <h4 className="font-bold mb-2">2. 차 팔 때</h4>
                 <p className="mb-2">판매 시에만 수수료가 발생해요.</p>
                 <ul className="space-y-2">
-                  <li>• 3,000만원 이하: 299,000원</li>
-                  <li>• 3,001만원 ~ 4,000만원: 399,000원</li>
-                  <li>• 4,001만원 ~ 5,000만원: 499,000원</li>
-                  <li>• 5,001만원 ~ 6,000만원: 599,000원</li>
-                  <li>• 6,001만원 ~ 7,000만원: 699,000원</li>
-                  <li>• 7,001만원 ~ 8,000만원: 799,000원</li>
-                  <li>• 8,001만원 ~ 9,000만원: 899,000원</li>
-                  <li>• 9,001만원 ~ 1억원 미만: 999,000원</li>
-                  <li>• 1억원 이상: 1,499,000원</li>
+                  <li>• 1천만원 이하면 30만원만</li>
+                  <li>• 1천만원~5천만원은 4%</li>
+                  <li>• 5천만원~1억은 3%</li>
+                  <li>• 1억 넘으면 2%(최대 300만원)</li>
                 </ul>
               </div>
             </div>
@@ -488,8 +483,8 @@ const BannerContent = ({ bannerId, setShowBannerSheet }) => {
             <h3 className="font-bold text-lg">⚠️ 잠깐!</h3>
             <p>이미 딜러에게 견적 받으셨다구요?<br/>
             그럼 더더욱 연락주세요!</p>
-            <p>그 견적을 기준으로<br/>
-            서비스 이용 여부를 결정할 수 있어요.</p>
+            <p>그 견적이 있어야 얼마나 더 받을 수 있는지<br/>
+            정확히 알려드릴 수 있거든요.</p>
           </div>
 
           {/* 하단 고정 버튼 */}
@@ -794,7 +789,6 @@ const Home = () => {
   const navigate = useNavigate();
   const [recentViews, setRecentViews] = useState([]);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [showDetailFees, setShowDetailFees] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
