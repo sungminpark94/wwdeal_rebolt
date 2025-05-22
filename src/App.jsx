@@ -1,6 +1,6 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { FavoritesProvider } from './contexts/FavoritesContext';
 import { ReservationProvider } from './contexts/ReservationContext';
 import { InterestProvider } from './contexts/InterestContext';
@@ -19,6 +19,10 @@ import ScrollToTop from './components/ScrollToTop';
 import SellLanding from './pages/SellLanding';
 import Footer from './components/Footer';
 
+const PrivateRoute = ({ children }) => {
+  const { currentUser } = useAuth();
+  return currentUser ? children : <Navigate to="/Profile" />;
+};
 
 function App() {
   return (

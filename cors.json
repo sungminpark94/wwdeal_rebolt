@@ -1,0 +1,8 @@
+[
+    {
+      "origin": ["http://localhost:3000", "https://wwdeal-1d10e.web.app", "https://wwdeal-1d10e.firebaseapp.com"],
+      "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
+      "maxAgeSeconds": 3600,
+      "responseHeader": ["Content-Type", "Content-Length", "Content-Encoding", "X-Firebase-Storage-CORS"]
+    }
+  ]
