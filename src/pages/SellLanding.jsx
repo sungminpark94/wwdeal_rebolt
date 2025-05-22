@@ -111,7 +111,8 @@ const SellLanding = () => {
           </p>
         </div>
         <button
-          onClick={() => window.location.href = 'https://naver.me/GbDVH4DG'}
+          // onClick={() => window.location.href = 'https://naver.me/GbDVH4DG'}
+          onClick={() => navigate('/sell/registration')}
           className="absolute bottom-6 left-5 right-5 bg-[#00de6e] text-white py-4 rounded-xl font-medium"
         >
           직거래 최적가 무료로 확인하기
@@ -217,8 +218,8 @@ const SellLanding = () => {
           <button 
               onClick={() => {
                 // setShowBannerSheet(false);
-                // navigate('/sell');
-                window.location.href = 'https://naver.me/GbDVH4DG'
+                navigate('/sell/registration');
+                // window.location.href = 'https://naver.me/GbDVH4DG'
               }}
               className="w-full bg-[#00de6e] text-white py-4 rounded-xl font-medium hover:bg-gray-400 transition-colors duration-200"
             >

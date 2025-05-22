@@ -450,13 +450,13 @@ const ListingDetail = () => {
       <div className="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-full max-w-[500px] px-4 py-2 bg-white border-t">
         <div className="flex gap-2">
           <a 
-            href={`tel:${listing.seller.phone}`}
+            href={`tel:01024079314`}
             className="flex-1 bg-gray-100 text-gray-900 py-4 rounded-xl font-medium text-center"
           >
             전화로 문의하기
           </a>
           <button 
-            onClick={() => window.open('https://pf.kakao.com/_xgxkExbxj')}
+            onClick={() => window.open('http://pf.kakao.com/_NxcPXn/chat')}
             className="flex-1 bg-[#FAE100] text-black py-4 rounded-xl font-medium"
           >
             카카오톡 문의하기
