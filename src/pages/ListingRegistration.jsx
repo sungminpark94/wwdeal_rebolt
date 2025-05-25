@@ -20,26 +20,11 @@ const initialInspections = INSPECTION_ITEMS.reduce((acc, item) => {
   acc[item.id] = {
     images: [],
     status: '',
-    comment: ''
+    comment: '',
+    files: []
   };
   return acc;
 }, {});
-
-// 파일 유효성 검사 함수
-const validateFile = (file) => {
-  // 파일 크기 제한 (예: 10MB)
-  const maxSize = 10 * 1024 * 1024;
-  if (file.size > maxSize) {
-    throw new Error(`파일 크기가 너무 큽니다: ${file.name} (최대 10MB)`);
-  }
-  
-  // 이미지 타입 확인
-  if (!file.type.startsWith('image/')) {
-    throw new Error(`이미지 파일만 업로드 가능합니다: ${file.name}`);
-  }
-  
-  return true;
-};
 
 const ListingRegistration = () => {
   const navigate = useNavigate();
@@ -72,24 +57,22 @@ const ListingRegistration = () => {
     inspections: initialInspections
   });
 
-  const [imageFiles, setImageFiles] = useState({
-    main: [], // 주 이미지 파일
-    battery: [], // 배터리 이미지 파일
-    // 검사 항목별 이미지 파일들은 동적으로 추가
-  });
-  
+  const [imageFiles, setImageFiles] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   // 이미지 미리보기 상태
   const [imagePreview, setImagePreview] = useState([]);
   const [batteryImagePreview, setBatteryImagePreview] = useState([]);
-  const [inspectionImagePreviews, setInspectionImagePreviews] = useState(
-    INSPECTION_ITEMS.reduce((acc, item) => {
-      acc[item.id] = [];
-      return acc;
-    }, {})
-  );
+  const [imagePreviewMap, setImagePreviewMap] = useState({
+    exterior: [],
+    paint: [],
+    interior: [],
+    tire: [],
+    seat: [],
+    undercarriage: [],
+    leakage: [],
+    consumables: []
+  });
 
   // 기본 옵션 목록
   const defaultOptions = [
@@ -141,58 +124,27 @@ const ListingRegistration = () => {
 
   // 차량 이미지 업로드 핸들러
   const handleImageUpload = (e) => {
-    try {
-      const files = Array.from(e.target.files);
-      
-      // 최대 업로드 이미지 개수 제한 (10개)
-      if (imagePreview.length + files.length > 10) {
-        alert('최대 10개의 이미지만 업로드할 수 있습니다.');
-        return;
-      }
-
-      // 각 파일 유효성 검사
-      files.forEach(file => validateFile(file));
-      
-      const previews = files.map(file => URL.createObjectURL(file));
-      setImagePreview(prev => [...prev, ...previews]);
-      
-      // imageFiles 상태 업데이트
-      setImageFiles(prev => ({
-        ...prev,
-        main: [...(prev.main || []), ...files]
-      }));
-    } catch (error) {
-      console.error("이미지 업로드 오류:", error);
-      alert(error.message || '이미지 업로드 중 오류가 발생했습니다.');
-    }
+    const files = Array.from(e.target.files);
+    const previews = files.map(file => URL.createObjectURL(file));
+    setImagePreview(prev => [...prev, ...previews]);
+    setFormData(prev => ({
+      ...prev,
+      images: [...prev.images, ...files]
+    }));
   };
 
   // 배터리 이미지 업로드 핸들러
   const handleBatteryImageUpload = (e) => {
-    try {
-      const files = Array.from(e.target.files);
-      
-      // 최대 업로드 이미지 개수 제한 (5개)
-      if (batteryImagePreview.length + files.length > 5) {
-        alert('배터리 이미지는 최대 5개까지 업로드할 수 있습니다.');
-        return;
+    const files = Array.from(e.target.files);
+    const previews = files.map(file => URL.createObjectURL(file));
+    setBatteryImagePreview(prev => [...prev, ...previews]);
+    setFormData(prev => ({
+      ...prev,
+      battery: {
+        ...prev.battery,
+        images: [...prev.battery.images, ...files]
       }
-
-      // 각 파일 유효성 검사
-      files.forEach(file => validateFile(file));
-      
-      const previews = files.map(file => URL.createObjectURL(file));
-      setBatteryImagePreview(prev => [...prev, ...previews]);
-      
-      // imageFiles 상태 업데이트
-      setImageFiles(prev => ({
-        ...prev,
-        battery: [...(prev.battery || []), ...files]
-      }));
-    } catch (error) {
-      console.error("배터리 이미지 업로드 오류:", error);
-      alert(error.message || '배터리 이미지 업로드 중 오류가 발생했습니다.');
-    }
+    }));
   };
 
   const handleInspectionChange = (part, field, value) => {
@@ -209,253 +161,148 @@ const ListingRegistration = () => {
   };
 
   const handleInspectionImageUpload = async (e, itemId) => {
-    try {
-      const files = Array.from(e.target.files);
-      if (!files.length) return;
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
 
-      // 최대 업로드 이미지 개수 제한 (10개)
-      const currentPreviews = inspectionImagePreviews[itemId] || [];
-      if (currentPreviews.length + files.length > 10) {
-        alert(`${INSPECTION_ITEMS.find(item => item.id === itemId)?.label} 이미지는 최대 10개까지 업로드할 수 있습니다.`);
-        return;
+    try {
+      const newImageUrls = [];
+      const newImageFiles = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const imageUrl = URL.createObjectURL(file);
+        newImageUrls.push(imageUrl);
+        newImageFiles.push(file);
       }
 
-      // 각 파일 유효성 검사
-      files.forEach(file => validateFile(file));
-
-      const newPreviews = files.map(file => URL.createObjectURL(file));
-      
-      // 미리보기 업데이트
-      setInspectionImagePreviews(prev => ({
+      setFormData(prev => ({
         ...prev,
-        [itemId]: [...(prev[itemId] || []), ...newPreviews]
+        inspections: {
+          ...prev.inspections,
+          [itemId]: {
+            ...prev.inspections[itemId],
+            images: [...(prev.inspections[itemId].images || []), ...newImageUrls],
+            files:  [...prev.inspections[itemId].files,  ...files]
+          }
+        }
       }));
 
-      // 파일 객체 저장
       setImageFiles(prev => ({
         ...prev,
-        [itemId]: [...(prev[itemId] || []), ...files]
+        [itemId]: [...(prev[itemId] || []), ...newImageFiles]
       }));
     } catch (error) {
-      console.error("검사 이미지 업로드 오류:", error);
-      alert(error.message || '이미지 업로드 중 오류가 발생했습니다.');
+      console.error("Error handling image upload:", error);
+      alert("이미지 업로드 중 오류가 발생했습니다.");
     }
   };
 
   const handleImageDelete = (itemId, index) => {
-    try {
-      // 미리보기 URL 해제
-      const previewToRemove = inspectionImagePreviews[itemId][index];
-      if (previewToRemove && previewToRemove.startsWith('blob:')) {
-        URL.revokeObjectURL(previewToRemove);
+    const imageUrl = formData.inspections[itemId].images[index];
+    if (imageUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(imageUrl);
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      inspections: {
+        ...prev.inspections,
+        [itemId]: {
+          ...prev.inspections[itemId],
+          images: prev.inspections[itemId].images.filter((_, i) => i !== index)
+        }
       }
+    }));
 
-      // 미리보기 업데이트
-      setInspectionImagePreviews(prev => ({
-        ...prev,
-        [itemId]: prev[itemId].filter((_, i) => i !== index)
-      }));
-
-      // 파일 객체 업데이트
-      setImageFiles(prev => ({
-        ...prev,
-        [itemId]: (prev[itemId] || []).filter((_, i) => i !== index)
-      }));
-    } catch (error) {
-      console.error("이미지 삭제 오류:", error);
-      alert('이미지 삭제 중 오류가 발생했습니다.');
-    }
-  };
-
-  const handleMainImageDelete = (index) => {
-    try {
-      // 미리보기 URL 해제
-      if (imagePreview[index] && imagePreview[index].startsWith('blob:')) {
-        URL.revokeObjectURL(imagePreview[index]);
-      }
-
-      // 미리보기 업데이트
-      setImagePreview(prev => prev.filter((_, i) => i !== index));
-
-      // 파일 객체 업데이트
-      setImageFiles(prev => ({
-        ...prev,
-        main: (prev.main || []).filter((_, i) => i !== index)
-      }));
-    } catch (error) {
-      console.error("메인 이미지 삭제 오류:", error);
-      alert('이미지 삭제 중 오류가 발생했습니다.');
-    }
-  };
-
-  const handleBatteryImageDelete = (index) => {
-    try {
-      // 미리보기 URL 해제
-      if (batteryImagePreview[index] && batteryImagePreview[index].startsWith('blob:')) {
-        URL.revokeObjectURL(batteryImagePreview[index]);
-      }
-
-      // 미리보기 업데이트
-      setBatteryImagePreview(prev => prev.filter((_, i) => i !== index));
-
-      // 파일 객체 업데이트
-      setImageFiles(prev => ({
-        ...prev,
-        battery: (prev.battery || []).filter((_, i) => i !== index)
-      }));
-    } catch (error) {
-      console.error("배터리 이미지 삭제 오류:", error);
-      alert('이미지 삭제 중 오류가 발생했습니다.');
-    }
-  };
-
-  const uploadFileWithProgress = async (file, path) => {
-    try {
-      const storageRef = ref(storage, path);
-      
-      // 업로드 작업 생성
-      const uploadTask = uploadBytes(storageRef, file);
-      
-      // 업로드 완료 대기
-      const snapshot = await uploadTask;
-      
-      // 다운로드 URL 반환
-      return await getDownloadURL(snapshot.ref);
-    } catch (error) {
-      console.error(`파일 업로드 오류 (${path}):`, error);
-      throw error;
-    }
+    setImageFiles(prev => ({
+      ...prev,
+      [itemId]: (prev[itemId] || []).filter((_, i) => i !== index)
+    }));
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // 필수 필드 검증
-    if (!imageFiles.main || imageFiles.main.length === 0) {
-      alert('최소 한 개 이상의 차량 이미지를 업로드해주세요.');
-      return;
-    }
+  e.preventDefault();
+  try {
+    setIsLoading(true);
 
-    try {
-      setIsLoading(true);
-      setUploadProgress(0);
-      
-      // 1. 메인 이미지 업로드
-      console.log('메인 이미지 업로드 시작...');
-      const mainImageUrls = await Promise.all(
-        imageFiles.main.map(async (file, index) => {
-          const url = await uploadFileWithProgress(
-            file, 
-            `listings/${Date.now()}-${index}-${file.name}`
-          );
-          setUploadProgress(prev => prev + (30 / imageFiles.main.length));
-          return url;
+    // 1) 차량 이미지 업로드 (File → URL)
+    const imageUrls = await Promise.all(
+      formData.images.map(async (image) => {
+        const storageRef = ref(storage, `listings/${Date.now()}-${image.name}`);
+        const snapshot   = await uploadBytes(storageRef, image);
+        return await getDownloadURL(snapshot.ref);
+      })
+    );
+
+    // 2) 배터리 이미지 업로드 (전기차인 경우)
+    let batteryImageUrls = [];
+    if (formData.fuel === '전기' && formData.battery.images.length > 0) {
+      batteryImageUrls = await Promise.all(
+        formData.battery.images.map(async (image) => {
+          const storageRef = ref(storage, `batteries/${Date.now()}-${image.name}`);
+          const snapshot   = await uploadBytes(storageRef, image);
+          return await getDownloadURL(snapshot.ref);
         })
       );
-      console.log('메인 이미지 업로드 완료:', mainImageUrls);
+    }
 
-      // 2. 배터리 이미지 업로드 (전기차인 경우)
-      let batteryImageUrls = [];
-      if (formData.fuel === '전기' && imageFiles.battery && imageFiles.battery.length > 0) {
-        console.log('배터리 이미지 업로드 시작...');
-        batteryImageUrls = await Promise.all(
-          imageFiles.battery.map(async (file, index) => {
-            const url = await uploadFileWithProgress(
-              file, 
-              `batteries/${Date.now()}-${index}-${file.name}`
+    // 3) 점검 이미지 업로드 처리
+    const inspectionImagesResults = await Promise.all(
+      Object.entries(formData.inspections).map(async ([part, data]) => {
+        if (data.files.length === 0) return [part, []];
+
+        const urls = await Promise.all(
+          data.files.map(async (image) => {
+            const storageRef = ref(
+              storage,
+              `inspections/${part}/${Date.now()}-${image.name}`
             );
-            setUploadProgress(prev => prev + (10 / imageFiles.battery.length));
-            return url;
+            const snap = await uploadBytes(storageRef, image);
+            return await getDownloadURL(snap.ref);
           })
         );
-        console.log('배터리 이미지 업로드 완료:', batteryImageUrls);
-      }
+        return [part, urls];
+      })
+    );
+    const inspectionImages = Object.fromEntries(inspectionImagesResults);
 
-      // 3. 점검 이미지 업로드
-      console.log('검사 이미지 업로드 시작...');
-      const inspectionItems = INSPECTION_ITEMS.map(item => item.id);
-      const inspectionImagesPromises = inspectionItems.map(async (part) => {
-        const files = imageFiles[part] || [];
-        if (files.length > 0) {
-          const urls = await Promise.all(
-            files.map(async (file, index) => {
-              const url = await uploadFileWithProgress(
-                file, 
-                `inspections/${part}/${Date.now()}-${index}-${file.name}`
-              );
-              // 모든 검사 항목 이미지 업로드를 합쳐서 60%로 계산
-              const totalInspectionFiles = inspectionItems.reduce(
-                (sum, itemId) => sum + (imageFiles[itemId]?.length || 0), 
-                0
-              );
-              if (totalInspectionFiles > 0) {
-                setUploadProgress(prev => prev + (60 / totalInspectionFiles));
-              }
-              return url;
-            })
-          );
-          return [part, urls];
-        }
-        return [part, []];
-      });
-      
-      const inspectionImagesResults = await Promise.all(inspectionImagesPromises);
-      const inspectionImages = Object.fromEntries(inspectionImagesResults);
-      console.log('검사 이미지 업로드 완료:', inspectionImages);
+    // 4) files 필드 제거하고 URL만 담은 cleanInspections 생성
+    const cleanInspections = Object.entries(formData.inspections).reduce(
+      (acc, [part, data]) => {
+        const { files, images, ...rest } = data;
+        acc[part] = {
+          ...rest,                            // status, comment 등
+          images: inspectionImages[part] || []
+        };
+        return acc;
+      },
+      {}
+    );
 
-      // 4. Firestore에 데이터 저장
-      console.log('Firestore에 데이터 저장 시작...');
-      const listingData = {
-        name: formData.name,
-        price: Number(formData.price),
-        year: formData.year,
-        mileage: formData.mileage,
-        status: formData.status,
-        fuel: formData.fuel,
-        transmission: formData.transmission,
-        options: formData.options,
-        description: formData.description,
-        images: mainImageUrls,
-        location: formData.location,
-        battery: {
-          status: formData.battery.status,
-          images: batteryImageUrls
-        },
-        inspection: {
-          date: formData.inspection.date,
-          status: formData.inspection.status
-        },
-        sellerComment: formData.sellerComment,
-        // 검사 데이터 구조화
-        inspections: Object.entries(formData.inspections).reduce((acc, [part, data]) => ({
-          ...acc,
-          [part]: {
-            status: data.status,
-            comment: data.comment,
-            images: inspectionImages[part] || []
-          }
-        }), {}),
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+    // 5) Firestore로 보낼 최종 데이터 구성
+    const listingData = {
+      ...formData,
+      images: imageUrls,
+      battery: {
+        ...formData.battery,
+        images: batteryImageUrls
+      },
+      inspections: cleanInspections,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
 
-      // Firestore에 문서 추가
-      const docRef = await addDoc(collection(db, 'listings'), listingData);
-      console.log('Document written with ID: ', docRef.id);
-      setUploadProgress(100);
-      
-      // 성공 메시지 및 리디렉션
-      alert('매물이 성공적으로 등록되었습니다!');
-      navigate(`/listing/${docRef.id}`);
-    } catch (error) {
-      console.error('Error details:', error.code, error.message);
-      console.error('Error submitting form:', error);
-      alert(`매물 등록 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`);
-    } finally {
-      setIsLoading(false);
-      setUploadProgress(0);
-    }
-  };
+    const docRef = await addDoc(collection(db, 'listings'), listingData);
+    console.log('Document written with ID:', docRef.id);
+    navigate(`/listing/${docRef.id}`);
+  } catch (error) {
+    console.error('Error submitting form:', error);
+    alert('매물 등록 중 오류가 발생했습니다.');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -676,7 +523,7 @@ const ListingRegistration = () => {
         {/* 이미지 업로드 */}
         <div className="bg-white p-4 rounded-xl space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">차량 이미지 *</h2>
+            <h2 className="text-lg font-medium">차량 이미지</h2>
             <span className="text-sm text-gray-400">
               {imagePreview.length}/10장
             </span>
@@ -693,24 +540,18 @@ const ListingRegistration = () => {
                 multiple
                 onChange={handleImageUpload}
                 className="hidden"
+                required
               />
             </label>
 
             {/* 썸네일 미리보기 */}
             {imagePreview.map((url, index) => (
-              <div key={index} className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
+              <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
                 <img
                   src={url}
                   alt={`Preview ${index + 1}`}
                   className="w-full h-full object-cover"
                 />
-                <button
-                  type="button"
-                  onClick={() => handleMainImageDelete(index)}
-                  className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-colors"
-                >
-                  <span className="material-icons text-white text-lg">close</span>
-                </button>
               </div>
             ))}
           </div>
@@ -739,50 +580,33 @@ const ListingRegistration = () => {
                 <option value="경고">경고</option>
               </select>
             </div>
-            
             {/* 배터리 이미지 업로드 */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  배터리 이미지
-                </label>
-                <span className="text-sm text-gray-400">
-                  {batteryImagePreview.length}/5장
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-2">
-                <label className="aspect-square bg-gray-50 rounded-lg flex flex-col items-center justify-center cursor-pointer">
-                  <span className="material-icons text-gray-400 mb-1">photo_camera</span>
-                  <span className="text-sm text-gray-400">촬영</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleBatteryImageUpload}
-                    className="hidden"
-                  />
-                </label>
-                
-                {/* 배터리 이미지 미리보기 */}
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                배터리 이미지
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleBatteryImageUpload}
+                className="w-full"
+              />
+            </div>
+            {/* 배터리 이미지 미리보기 */}
+            {batteryImagePreview.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
                 {batteryImagePreview.map((url, index) => (
-                  <div key={index} className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                  <div key={index} className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
                     <img
                       src={url}
                       alt={`Battery ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
-                    <button
-                      type="button"
-                      onClick={() => handleBatteryImageDelete(index)}
-                      className="absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-colors"
-                    >
-                      <span className="material-icons text-white text-lg">close</span>
-                    </button>
                   </div>
                 ))}
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -808,7 +632,7 @@ const ListingRegistration = () => {
         </div>
 
         {/* 판매자 코멘트 */}
-        <div className="bg-white p-4 rounded-xl space-y-4">
+        <div className="bg-white p-4 rounded-xl space-y-4 mb-[500px]">
           <h2 className="text-lg font-medium">판매자 코멘트</h2>
           <div>
             <textarea
@@ -823,10 +647,8 @@ const ListingRegistration = () => {
 
         {/* 검사 항목들 */}
         <div className="bg-white p-4 rounded-xl space-y-6">
-          <h2 className="text-lg font-medium">차량 점검 상태</h2>
-          
           {INSPECTION_ITEMS.map(({ id, label }) => (
-            <div key={id} className="space-y-4 border-b pb-6 last:border-b-0">
+            <div key={id} className="space-y-4">
               {/* 파트 제목과 상태 표시 */}
               <div className="flex items-center justify-between">
                 <h3 className="font-medium">{label}</h3>
@@ -835,11 +657,9 @@ const ListingRegistration = () => {
                     ? 'bg-green-50 text-green-600'
                     : formData.inspections[id].status === '확인필요'
                     ? 'bg-yellow-50 text-yellow-600'
-                    : formData.inspections[id].status === '이상있음'
-                    ? 'bg-red-50 text-red-600'
-                    : 'bg-gray-50 text-gray-600'
+                    : 'bg-red-50 text-red-600'
                 }`}>
-                  {formData.inspections[id].status || '상태 선택'}
+                  {formData.inspections[id].status}
                 </div>
               </div>
 
@@ -870,7 +690,7 @@ const ListingRegistration = () => {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-gray-600">{label} 사진</span>
                   <span className="text-sm text-gray-400">
-                    {inspectionImagePreviews[id]?.length || 0}/10장
+                    {formData.inspections[id].images.length}/10장
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
@@ -885,7 +705,7 @@ const ListingRegistration = () => {
                       className="hidden"
                     />
                   </label>
-                  {inspectionImagePreviews[id]?.map((url, index) => (
+                  {formData.inspections[id].images.map((url, index) => (
                     <div key={index} className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
                       <img
                         src={url}
@@ -908,30 +728,12 @@ const ListingRegistration = () => {
               <textarea
                 value={formData.inspections[id].comment}
                 onChange={(e) => handleInspectionChange(id, 'comment', e.target.value)}
-                placeholder={`${label} 상태를 자세히 설명해주세요`}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg resize-none h-24"
+                placeholder="차량 상태를 자세히 설명해주세요"
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg resize-none"
               />
             </div>
           ))}
         </div>
-
-        {/* 업로드 진행 상태 표시 */}
-        {isLoading && (
-          <div className="bg-white p-4 rounded-xl">
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm font-medium">업로드 진행 중...</span>
-                <span className="text-sm">{Math.round(uploadProgress)}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div 
-                  className="bg-blue-600 h-2.5 rounded-full" 
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 추가 여백 div */}
         <div className="h-[120px]"></div>
@@ -955,4 +757,4 @@ const ListingRegistration = () => {
   );
 };
 
-export default ListingRegistration;
+export default ListingRegistration; 
